@@ -6,15 +6,16 @@ from pywhispercpp.model import Model
 from utils import get_logger
 from enum import Enum
 
-
 logger = get_logger()
 
 class TranscriptionModels(Enum):
     tiny_en_q5_1 = 'tiny.en.q5_1'
     base_en  = 'base.en'
+    small_en = 'small.en'
+    small_en_q8_0 = 'small.en-q8_0'
 
 class Transcriber():
-    def __init__(self,model: TranscriptionModels = TranscriptionModels.base_en ):
+    def __init__(self,model: TranscriptionModels = TranscriptionModels.base_en):
         self.model = Model(
             model=model.value,
             models_dir=constants.MODELS_DIR,
