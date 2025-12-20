@@ -5,40 +5,14 @@ import sounddevice as sd
 import numpy as np
 import keyboard
 import constants
+from transcription import Transcriber
 from utils import get_logger
 
 
 logger = get_logger()
 
 
-model = Model(
-    model='base.en',
-    models_dir=constants.MODELS_DIR,
-)
-
-
-def transcribe(audio: np.ndarray) -> None:
-    try:
-        result = model.transcribe(
-            media=audio,
-            n_processors=1
-        )
-        logger.info("Transcription: %s", result)
-    except Exception:
-        logger.exception("Transcription failed")
-
-
-def is_transcribable(audio: np.ndarray, threshold: float = 300.0, min_seconds: float = 1.0) -> bool:
-    if audio.dtype != np.int16:
-        threshold = threshold /  32768
-        
-    checks = [
-        np.abs(audio).mean() > threshold,
-        audio.shape[0] > int(constants.SAMPLE_RATE * min_seconds) # at least 1 second
-    ]
-    
-    return all(checks)
-
+transcriber = Transcriber()
 
 def main():    
     audio_buffer = []
@@ -60,13 +34,13 @@ def main():
                     audio_buffer.append(data.copy())
                 audio = np.concatenate(audio_buffer, axis=0).squeeze()
 
-                if not is_transcribable(audio):
+                if not transcriber.is_transcribable(audio):
                     logger.warning("Audio too silent/short, please try again.")
                     continue
 
                 audio = audio.astype(np.float32) / 32768.0
                 logger.debug("Captured %d samples", int(audio.shape[0]))
-                transcribe(audio)
+                transcriber.transcribe(audio)
             except KeyboardInterrupt:
                 logger.info("Stopping (KeyboardInterrupt)")
                 return
