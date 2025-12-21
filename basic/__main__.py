@@ -10,7 +10,7 @@ logger = get_logger()
 
 
 def main():
-    transcriber = Transcriber(TranscriptionModels.base_en)
+    transcriber = Transcriber(TranscriptionModels.tiny_en)
 
     ring = RingAudioBuffer(
         sample_rate=constants.SAMPLE_RATE,   

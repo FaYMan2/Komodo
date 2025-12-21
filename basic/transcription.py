@@ -19,6 +19,8 @@ class TranscriptionModels(Enum):
     small_en_q8_0 = 'small.en-q8_0'
     small_q8_0 = 'small-q8_0'
     small_q5_1 = 'small-q5_1'
+    tiny_en = 'tiny.en'
+    tiny_en_q8_0 = 'tiny.en-q8_0'
 
 
 class Transcriber():
@@ -26,7 +28,10 @@ class Transcriber():
         print("loading model: ", model.value, "...",constants.MODELS_DIR)
         self.model = Model(
             model=model.value,
-            models_dir=constants.MODELS_DIR
+            models_dir=constants.MODELS_DIR,
+            print_progress=False,
+            print_realtime=True,
+            print_timestamps=False      
         )
         self.sample_rate = constants.SAMPLE_RATE
         

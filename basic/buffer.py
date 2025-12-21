@@ -10,11 +10,6 @@ logger = get_logger()
 class RingAudioBuffer:
     """
     Realtime-safe ring buffer for streaming audio with overlapping chunk extraction.
-
-    - Single producer (mic thread)
-    - Single consumer (chunking worker)
-    - Zero allocations in add()
-    - Fixed memory usage
     """
 
     def __init__(
@@ -58,10 +53,6 @@ class RingAudioBuffer:
 
 
     def add(self, audio: np.ndarray) -> None:
-        """
-        Add audio samples to the ring buffer.
-        Must be fast and allocation-free.
-        """
         n = len(audio)
         if n == 0:
             return
@@ -126,7 +117,6 @@ class RingAudioBuffer:
             self.write_idx = 0
             self.read_idx = 0
             self.available = 0
-            # Drain the queue instead of replacing it to avoid stranding consumers
             while True:
                 try:
                     self.queue.get_nowait()
