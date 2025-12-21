@@ -1,18 +1,13 @@
-from random import sample
-from pywhispercpp.model import Model
-import os
 import sounddevice as sd
 import numpy as np
 import keyboard
-import constants
-from transcription import Transcriber
-from utils import get_logger
+import basic.constants as constants
+from basic.transcription import Transcriber, TranscriptionModels
+from basic.utils import get_logger
 
 
 logger = get_logger()
-
-
-transcriber = Transcriber()
+transcriber = Transcriber(TranscriptionModels.small_q5_1)
 
 def main():    
     audio_buffer = []

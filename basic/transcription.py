@@ -1,9 +1,9 @@
 
 from re import S
-import constants
+import basic.constants as constants
 import numpy as np
 from pywhispercpp.model import Model
-from utils import get_logger
+from basic.utils import get_logger
 from enum import Enum
 
 logger = get_logger()
@@ -13,9 +13,13 @@ class TranscriptionModels(Enum):
     base_en  = 'base.en'
     small_en = 'small.en'
     small_en_q8_0 = 'small.en-q8_0'
+    small_q8_0 = 'small-q8_0'
+    small_q5_1 = 'small-q5_1'
+
 
 class Transcriber():
     def __init__(self,model: TranscriptionModels = TranscriptionModels.base_en):
+        print("loading model: ", model.value, "...",constants.MODELS_DIR)
         self.model = Model(
             model=model.value,
             models_dir=constants.MODELS_DIR,
