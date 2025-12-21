@@ -5,3 +5,9 @@ __pycache__
 build/
 vcpkg/
 dev/
+external/   
+libs/**/bin/
+libs/**/lib/
+libs/**/*.dll
+libs/**/*.lib
+libs/**/*.pdb

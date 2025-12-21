@@ -2,8 +2,11 @@ if(DEFINED ENV{VCPKG_ROOT})
     set(_VCPKG_ROOT "$ENV{VCPKG_ROOT}")
 elseif(DEFINED ENV{VCPKG_INSTALLATION_ROOT})
     set(_VCPKG_ROOT "$ENV{VCPKG_INSTALLATION_ROOT}")
+elseif(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../dev/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    # This repo vendors vcpkg under dev/vcpkg.
+    get_filename_component(_VCPKG_ROOT "${CMAKE_CURRENT_LIST_DIR}/../dev/vcpkg" REALPATH)
 else()
-    message(FATAL_ERROR "Neither VCPKG_ROOT nor VCPKG_INSTALLATION_ROOT is set. Point one of them to your vcpkg installation (e.g. C:/vcpkg).")
+    message(FATAL_ERROR "Could not locate vcpkg. Set VCPKG_ROOT (or VCPKG_INSTALLATION_ROOT) to your vcpkg installation, or use the repo-local one at dev/vcpkg.")
 endif()
 
 set(_VCPKG_TOOLCHAIN "${_VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
