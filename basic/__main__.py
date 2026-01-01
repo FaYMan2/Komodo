@@ -2,46 +2,74 @@ import sounddevice as sd
 import numpy as np
 import keyboard
 import basic.constants as constants
-from basic.transcription import Transcriber, TranscriptionModels
+from basic.transcription import Transcriber, TranscriptionModels, TranscriptionWorker
 from basic.utils import get_logger
-
+from basic.buffer import RingAudioBuffer
 
 logger = get_logger()
-transcriber = Transcriber(TranscriptionModels.small_q5_1)
 
-def main():    
-    audio_buffer = []
+
+def initalise_workers():
+    transcriber = Transcriber(TranscriptionModels.tiny_en)
+
+    ring = RingAudioBuffer(
+        sample_rate=constants.SAMPLE_RATE,   
+        chunk_duration=constants.CHUNK_SIZE,                  
+        overlap_duration=constants.CHUNK_OVERLAP,                
+        buffer_duration=constants.DEFAULT_BUFFER_SIZE                 
+    )
+
+    worker = TranscriptionWorker(
+        ring_buffer=ring,
+        transcriber=transcriber
+    )
+    return ring, worker
+
+def main():
+    
+    ring, worker = initalise_workers()
     with sd.InputStream(
         samplerate=constants.SAMPLE_RATE,
         channels=constants.CHANNELS,
         blocksize=constants.BLOCKSIZE,
-        dtype='int16'
+        dtype="int16",
     ) as stream:
+
         while True:
             try:
-                logger.info("Press and hold %s to record audio...", constants.ACTIVATION_HOTKEY)
+                logger.info(
+                    "Press and hold %s to record audio...",
+                    constants.ACTIVATION_HOTKEY
+                )
+
                 keyboard.wait(constants.ACTIVATION_HOTKEY)
-                logger.info("Recording... Release %s to stop.", constants.ACTIVATION_HOTKEY)
-                audio_buffer.clear()
+                logger.info(
+                    "Recording... Release %s to stop.",
+                    constants.ACTIVATION_HOTKEY
+                )
+                
+                ring.clear()
 
                 while keyboard.is_pressed(constants.ACTIVATION_HOTKEY):
                     data, _ = stream.read(constants.BLOCKSIZE)
-                    audio_buffer.append(data.copy())
-                audio = np.concatenate(audio_buffer, axis=0).squeeze()
+                    logger.debug(f"Read {len(data)} samples")
 
-                if not transcriber.is_transcribable(audio):
-                    logger.warning("Audio too silent/short, please try again.")
-                    continue
+                    audio = data.astype(np.float32) / 32768.0
+                    audio = audio.squeeze()
 
-                audio = audio.astype(np.float32) / 32768.0
-                logger.debug("Captured %d samples", int(audio.shape[0]))
-                transcriber.transcribe(audio)
+                    ring.add(audio)
+
+                logger.info("Recording stopped.")
+
             except KeyboardInterrupt:
                 logger.info("Stopping (KeyboardInterrupt)")
+                ring.stop()
+                worker.stop()
                 return
+
             except Exception:
                 logger.exception("Unexpected error in recording loop")
-            
- 
+
+
 if __name__ == "__main__":
     main()
