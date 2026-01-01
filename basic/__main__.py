@@ -9,7 +9,7 @@ from basic.buffer import RingAudioBuffer
 logger = get_logger()
 
 
-def main():
+def initalise_workers():
     transcriber = Transcriber(TranscriptionModels.tiny_en)
 
     ring = RingAudioBuffer(
@@ -23,7 +23,11 @@ def main():
         ring_buffer=ring,
         transcriber=transcriber
     )
+    return ring, worker
 
+def main():
+    
+    ring, worker = initalise_workers()
     with sd.InputStream(
         samplerate=constants.SAMPLE_RATE,
         channels=constants.CHANNELS,

@@ -1,15 +1,19 @@
 
+from functools import reduce
+from math import log
 from re import S
+from basic import executor_agent
 from basic.buffer import RingAudioBuffer
 import basic.constants as constants
 import numpy as np
-from pywhispercpp.model import Model
+from pywhispercpp.model import Model,Segment
 from basic.utils import get_logger
 from enum import Enum
 import threading
 import time
 from basic.buffer import RingAudioBuffer
-
+from typing import List
+from basic.executor_agent import ExecutorAgent
 logger = get_logger()
 
 class TranscriptionModels(Enum):
@@ -35,7 +39,7 @@ class Transcriber():
         )
         self.sample_rate = constants.SAMPLE_RATE
         
-    def transcribe(self, audio: np.ndarray) -> None:
+    def transcribe(self, audio: np.ndarray) -> str:
         try:
             result = self.model.transcribe(
                 media=audio,
@@ -44,8 +48,10 @@ class Transcriber():
                 extract_probability=False,
             )
             logger.info("Transcription: %s", result)
+            return "".join([segment.text for segment in result])
         except Exception:
             logger.exception("Transcription failed")
+            return ""
 
 
     def is_transcribable(self, audio: np.ndarray, threshold: float = 300.0, min_seconds: float = 1.0) -> bool:
@@ -93,8 +99,11 @@ class TranscriptionWorker:
                     logger.debug("Chunk ignored (silence/short)")
                     continue
                 logger.debug("Transcribing chunk...")
-                self.transcriber.transcribe(chunk)
-
+                transcribed_text = self.transcriber.transcribe(chunk)
+                if transcribed_text:
+                    ExecutorAgent.type_text(transcribed_text + " ")
+                else:
+                    logger.debug("No text transcribed from chunk.")
             except Exception:
                 logger.exception("Transcription worker error")
                 time.sleep(0.05)
