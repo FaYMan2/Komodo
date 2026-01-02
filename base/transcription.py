@@ -2,18 +2,18 @@
 from functools import reduce
 from math import log
 from re import S
-from basic import executor_agent
-from basic.buffer import RingAudioBuffer
-import basic.constants as constants
+from base import executor_agent
+from base.buffer import RingAudioBuffer
+import base.constants as constants
 import numpy as np
 from pywhispercpp.model import Model,Segment
-from basic.utils import get_logger
+from base.utils import get_logger
 from enum import Enum
 import threading
 import time
-from basic.buffer import RingAudioBuffer
+from base.buffer import RingAudioBuffer
 from typing import List
-from basic.executor_agent import ExecutorAgent
+from base.executor_agent import ExecutorAgent
 logger = get_logger()
 
 class TranscriptionModels(Enum):
@@ -59,7 +59,7 @@ class Transcriber():
             threshold = threshold /  32768
 
         mean_val = np.abs(audio).mean()
-        logger.debug(f"is_transcribable check: mean={mean_val:.6f}, threshold={threshold}, shape={audio.shape}")
+        logger.debug(f"is_transcribable check: mean={mean_val:.6f}, threshold={threshold}, duration={audio.shape[0] / self.sample_rate}")
 
         checks = [
             mean_val > threshold,
@@ -83,30 +83,58 @@ class TranscriptionWorker:
         self.transcriber = transcriber
 
         self.running = True
+        self.accepting_chunks = True
+        self.processing_lock = threading.Lock()
+        self.session_transcripts : List[str] = []
+
         self.thread = threading.Thread(
             target=self._loop,
             daemon=True
         )
         self.thread.start()
-
+        
+        
     def _loop(self):
         while self.running:
             try:
+                if not self.accepting_chunks:
+                    time.sleep(0.05)
+                    continue
                 logger.debug("Worker waiting for chunk...")
                 chunk = self.ring.get_chunk()
-                logger.debug(f"Worker got chunk. Shape: {chunk.shape}")
-                if not self.transcriber.is_transcribable(chunk):
-                    logger.debug("Chunk ignored (silence/short)")
-                    continue
-                logger.debug("Transcribing chunk...")
-                transcribed_text = self.transcriber.transcribe(chunk)
-                if transcribed_text:
-                    ExecutorAgent.type_text(transcribed_text + " ")
-                else:
-                    logger.debug("No text transcribed from chunk.")
+                with self.processing_lock:
+                    logger.debug(f"Worker got chunk. Shape: {chunk.shape}")
+                    if not self.transcriber.is_transcribable(chunk):
+                        logger.debug("Chunk ignored (silence/short)")
+                        continue
+                    logger.debug("Transcribing chunk...")
+                    transcribed_text = self.transcriber.transcribe(chunk)
+                    if transcribed_text:
+                        self.session_transcripts.append(transcribed_text)
+                    else:
+                        logger.debug("No text transcribed from chunk.")
+                        
             except Exception:
                 logger.exception("Transcription worker error")
                 time.sleep(0.05)
                 
+    def flush_and_transcribe(self) -> None:
+        self.accepting_chunks = False
+        with self.processing_lock:
+            chunks = self.ring.flush()
+            for chunk in chunks:
+                if not self.transcriber.is_transcribable(chunk):
+                    logger.debug("Flushed chunk ignored (silence/short)")
+                    continue
+                logger.debug("Transcribing flushed chunk...")
+                transcribed_text = self.transcriber.transcribe(chunk)
+                if transcribed_text:
+                    self.session_transcripts.append(transcribed_text)
+                else:
+                    logger.debug("No text transcribed from flushed chunk.")
+        self.accepting_chunks = True
+    def get_session_transcript(self) -> str:
+        return " ".join(self.session_transcripts)
+    
     def stop(self):
         self.running = False

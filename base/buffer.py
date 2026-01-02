@@ -1,10 +1,12 @@
+from operator import le
+from turtle import clear
 import numpy as np
 import threading
 import queue
 import time
-import basic.constants as constants
-from basic.utils import get_logger
-
+import base.constants as constants
+from base.utils import get_logger
+from typing import List
 logger = get_logger()
 
 class RingAudioBuffer:
@@ -122,7 +124,37 @@ class RingAudioBuffer:
                     self.queue.get_nowait()
                 except queue.Empty:
                     break
+    
+    def flush(self) -> List[np.ndarray]: 
+        """
+        Flush remaining audio into a final chunk
+        
+        :param self
+        """
+        left_chunks = []
+        while not self.queue.empty():
+            try:
+                left_chunks.append(self.queue.get())
+            except queue.Empty:
+                break
 
+        with self.lock:
+            if self.available > 0:
+                size = min(self.available, self.chunk_size)
+                chunk = np.empty(size, dtype=self.buffer.dtype)
+                start = self.read_idx 
+                end = start + size
+                if end <= self.capacity:
+                    chunk[:] = self.buffer[start:end]
+                else:
+                    first = self.capacity - start
+                    chunk[:first] = self.buffer[start:]
+                    chunk[first:] = self.buffer[:end % self.capacity]
+                self.read_idx = (self.read_idx + size) % self.capacity
+                self.available -= size
+                left_chunks.append(chunk)
+        self.clear()                
+        return left_chunks
     def stop(self):
         """
         Stop background worker.

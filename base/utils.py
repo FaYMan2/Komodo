@@ -6,7 +6,7 @@ class KomodoLogger(logging.Logger):
     _FMT = '%(asctime)s | %(levelname)s | %(name)s | %(message)s'
     _DATEFMT = '%Y-%m-%d %H:%M:%S'
 
-    def __init__(self, name: str, level: int = logging.INFO) -> None:
+    def __init__(self, name: str, level: int = logging.DEBUG) -> None:
         super().__init__(name, level)
         self._ensure_stream_handler(level)
 
@@ -19,7 +19,7 @@ class KomodoLogger(logging.Logger):
         self.addHandler(handler)
 
 
-def get_logger(name: str = 'komodo', level: int = logging.INFO) -> logging.Logger:
+def get_logger(name: str = 'komodo', level: int = logging.DEBUG) -> logging.Logger:
     logging.setLoggerClass(KomodoLogger)
     logger = logging.getLogger(name)
     logger.setLevel(level)

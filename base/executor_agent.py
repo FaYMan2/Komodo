@@ -1,5 +1,5 @@
 import keyboard as kb
-from basic.utils import get_logger
+from base.utils import get_logger
 
 logger = get_logger()
 
